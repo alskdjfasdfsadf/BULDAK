@@ -25,7 +25,17 @@ def main():
     try:
         import pandas
         import matplotlib
+        import matplotlib.pyplot as plt
         import numpy
+
+        # Colab/Jupyter 환경 감지 및 인라인 표시 설정
+        try:
+            from IPython import get_ipython
+            if get_ipython() is not None:
+                get_ipython().run_line_magic('matplotlib', 'inline')
+        except:
+            pass
+
     except ImportError as e:
         print("필요한 패키지가 설치되어 있지 않습니다.")
         print("다음 명령어로 설치해주세요:")
