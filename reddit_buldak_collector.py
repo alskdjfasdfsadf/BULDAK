@@ -202,18 +202,21 @@ class RedditBuldakCollector:
             print(f"Raw data saved to {filename}")
 
 
-def create_sample_data():
+def create_sample_data(start_year: int = 2023):
     """
     API 키 없이 테스트용 샘플 데이터 생성
     실제 Reddit 트렌드를 반영한 시뮬레이션 데이터
+
+    Args:
+        start_year: 시작 연도 (기본값: 2023)
     """
     import numpy as np
 
-    print("Generating sample data for demonstration...")
+    print(f"Generating sample data from {start_year} to present...")
 
-    # 날짜 범위 생성 (최근 1년)
+    # 날짜 범위 생성 (2023년 1월 1일부터 현재까지)
+    start_date = datetime(start_year, 1, 1)
     end_date = datetime.now()
-    start_date = end_date - timedelta(days=365)
     dates = pd.date_range(start=start_date, end=end_date, freq="D")
 
     # 기본 트렌드 + 주간 패턴 + 랜덤 노이즈

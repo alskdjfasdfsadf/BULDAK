@@ -189,6 +189,84 @@ def plot_monthly_summary(df: pd.DataFrame, save_path: str = None,
     return fig
 
 
+def plot_quarterly_mentions(df: pd.DataFrame, save_path: str = None,
+                            show_plot: bool = True):
+    """
+    분기별 언급량 막대 그래프 생성 (2023년부터 현재까지)
+
+    Args:
+        df: 시계열 데이터프레임
+        save_path: 저장 경로
+        show_plot: 화면에 표시 여부
+    """
+    # 분기별 집계
+    quarterly = df.resample('Q').agg({
+        'mention_count': 'sum'
+    })
+
+    # 분기 라벨 생성 (예: 2023 Q1, 2023 Q2, ...)
+    quarterly['quarter_label'] = quarterly.index.to_period('Q').astype(str)
+
+    fig, ax = plt.subplots(figsize=(14, 7))
+
+    # 색상 그라데이션 (시간에 따라 진해지는 빨간색)
+    colors = plt.cm.Reds([0.3 + 0.5 * i / len(quarterly) for i in range(len(quarterly))])
+
+    bars = ax.bar(range(len(quarterly)), quarterly['mention_count'],
+                  color=colors, edgecolor='darkred', linewidth=1.2)
+
+    # X축 설정
+    ax.set_xticks(range(len(quarterly)))
+    ax.set_xticklabels(quarterly['quarter_label'], rotation=45, ha='right', fontsize=11)
+
+    # Y축 및 제목
+    ax.set_ylabel('Total Mentions (언급 수)', fontsize=12)
+    ax.set_xlabel('Quarter (분기)', fontsize=12)
+    ax.set_title('Reddit BULDAK (불닭) Quarterly Mentions\n2023 - Present',
+                 fontsize=16, fontweight='bold', pad=20)
+
+    # 그리드
+    ax.grid(True, alpha=0.3, axis='y', linestyle='--')
+    ax.set_axisbelow(True)
+
+    # 값 레이블 추가
+    for i, bar in enumerate(bars):
+        height = bar.get_height()
+        ax.annotate(f'{int(height):,}',
+                    xy=(bar.get_x() + bar.get_width() / 2, height),
+                    xytext=(0, 5),
+                    textcoords="offset points",
+                    ha='center', va='bottom',
+                    fontsize=11, fontweight='bold')
+
+    # 성장률 표시 (전분기 대비)
+    for i in range(1, len(quarterly)):
+        prev_val = quarterly['mention_count'].iloc[i-1]
+        curr_val = quarterly['mention_count'].iloc[i]
+        if prev_val > 0:
+            growth = ((curr_val - prev_val) / prev_val) * 100
+            color = 'green' if growth >= 0 else 'red'
+            sign = '+' if growth >= 0 else ''
+            ax.annotate(f'{sign}{growth:.1f}%',
+                        xy=(i, quarterly['mention_count'].iloc[i] * 0.5),
+                        ha='center', va='center',
+                        fontsize=9, color=color, alpha=0.8)
+
+    # Y축 범위 조정 (레이블 공간 확보)
+    ax.set_ylim(0, quarterly['mention_count'].max() * 1.15)
+
+    plt.tight_layout()
+
+    if save_path:
+        plt.savefig(save_path, dpi=150, bbox_inches='tight')
+        print(f"Quarterly chart saved to {save_path}")
+
+    if show_plot:
+        plt.show()
+
+    return fig
+
+
 def generate_statistics(df: pd.DataFrame) -> dict:
     """통계 요약 생성"""
     stats = {
@@ -242,6 +320,8 @@ def main():
                         help="Don't display charts (just save)")
     parser.add_argument("--generate-sample", action="store_true",
                         help="Generate sample data and visualize")
+    parser.add_argument("--quarterly", "-q", action="store_true",
+                        help="Show only quarterly mentions chart")
 
     args = parser.parse_args()
 
@@ -276,28 +356,45 @@ def main():
 
     print("Generating charts...")
 
-    # 1. 메인 타임라인
-    plot_mention_timeline(
-        df,
-        save_path=os.path.join(args.output_dir, "buldak_timeline.png"),
-        show_plot=show
-    )
+    if args.quarterly:
+        # 분기별 언급량만 표시
+        plot_quarterly_mentions(
+            df,
+            save_path=os.path.join(args.output_dir, "buldak_quarterly.png"),
+            show_plot=show
+        )
+        print(f"\nQuarterly chart saved to {args.output_dir}/buldak_quarterly.png")
+    else:
+        # 모든 차트 생성
+        # 1. 메인 타임라인
+        plot_mention_timeline(
+            df,
+            save_path=os.path.join(args.output_dir, "buldak_timeline.png"),
+            show_plot=show
+        )
 
-    # 2. 히트맵
-    plot_weekly_heatmap(
-        df,
-        save_path=os.path.join(args.output_dir, "buldak_heatmap.png"),
-        show_plot=show
-    )
+        # 2. 히트맵
+        plot_weekly_heatmap(
+            df,
+            save_path=os.path.join(args.output_dir, "buldak_heatmap.png"),
+            show_plot=show
+        )
 
-    # 3. 월별 요약
-    plot_monthly_summary(
-        df,
-        save_path=os.path.join(args.output_dir, "buldak_monthly.png"),
-        show_plot=show
-    )
+        # 3. 월별 요약
+        plot_monthly_summary(
+            df,
+            save_path=os.path.join(args.output_dir, "buldak_monthly.png"),
+            show_plot=show
+        )
 
-    print(f"\nAll charts saved to {args.output_dir}/")
+        # 4. 분기별 요약
+        plot_quarterly_mentions(
+            df,
+            save_path=os.path.join(args.output_dir, "buldak_quarterly.png"),
+            show_plot=show
+        )
+
+        print(f"\nAll charts saved to {args.output_dir}/")
 
 
 if __name__ == "__main__":
