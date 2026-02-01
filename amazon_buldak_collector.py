@@ -3,8 +3,9 @@
 Amazon BULDAK Review Collector
 아마존에서 불닭(BULDAK) 제품 리뷰를 수집합니다.
 
-참고: 실제 아마존 스크래핑은 ToS 위반 가능성이 있습니다.
-      이 스크립트는 데모용 샘플 데이터 생성 기능을 포함합니다.
+지원하는 데이터 소스:
+1. Rainforest API (실제 아마존 데이터) - API 키 필요
+2. 샘플 데이터 생성 (데모용)
 """
 
 import pandas as pd
@@ -12,6 +13,13 @@ import numpy as np
 from datetime import datetime, timedelta
 import json
 import random
+import time
+
+try:
+    import requests
+    REQUESTS_AVAILABLE = True
+except ImportError:
+    REQUESTS_AVAILABLE = False
 
 
 # 불닭 제품 목록 (실제 아마존 제품 기반)
@@ -53,6 +61,140 @@ BULDAK_PRODUCTS = [
         "shu": 1863,
     },
 ]
+
+class RainforestAPICollector:
+    """
+    Rainforest API를 사용하여 실제 아마존 리뷰를 수집하는 클래스
+
+    API 키 발급: https://www.rainforestapi.com/ (무료 100 크레딧/월)
+    """
+
+    BASE_URL = "https://api.rainforestapi.com/request"
+
+    def __init__(self, api_key: str):
+        """
+        Args:
+            api_key: Rainforest API 키
+        """
+        if not REQUESTS_AVAILABLE:
+            raise ImportError("requests 패키지가 필요합니다: pip install requests")
+
+        self.api_key = api_key
+        self.collected_reviews = []
+
+    def get_product_reviews(self, asin: str, amazon_domain: str = "amazon.com",
+                           max_pages: int = 5) -> list:
+        """
+        특정 제품의 리뷰를 가져옵니다.
+
+        Args:
+            asin: 아마존 제품 ID
+            amazon_domain: 아마존 도메인 (amazon.com, amazon.co.uk 등)
+            max_pages: 최대 페이지 수 (페이지당 약 10개 리뷰)
+
+        Returns:
+            리뷰 리스트
+        """
+        reviews = []
+        product_info = None
+
+        for page in range(1, max_pages + 1):
+            params = {
+                "api_key": self.api_key,
+                "type": "reviews",
+                "amazon_domain": amazon_domain,
+                "asin": asin,
+                "page": page,
+            }
+
+            try:
+                print(f"  Fetching page {page} for ASIN: {asin}...")
+                response = requests.get(self.BASE_URL, params=params, timeout=30)
+                response.raise_for_status()
+                data = response.json()
+
+                # 제품 정보 저장
+                if product_info is None and "product" in data:
+                    product_info = data["product"]
+
+                # 리뷰 파싱
+                if "reviews" in data:
+                    for review in data["reviews"]:
+                        reviews.append({
+                            "review_id": review.get("id", ""),
+                            "asin": asin,
+                            "product_name": product_info.get("title", "") if product_info else "",
+                            "rating": review.get("rating", 0),
+                            "review_date": self._parse_date(review.get("date", {}).get("raw", "")),
+                            "review_text": review.get("body", ""),
+                            "review_title": review.get("title", ""),
+                            "helpful_votes": review.get("helpful_votes", 0),
+                            "verified_purchase": review.get("verified_purchase", False),
+                            "reviewer_name": review.get("profile", {}).get("name", ""),
+                        })
+
+                    # 더 이상 리뷰가 없으면 중단
+                    if len(data["reviews"]) == 0:
+                        break
+                else:
+                    break
+
+                # Rate limiting
+                time.sleep(1)
+
+            except requests.exceptions.RequestException as e:
+                print(f"  Error fetching reviews: {e}")
+                break
+
+        print(f"  -> Collected {len(reviews)} reviews for ASIN: {asin}")
+        return reviews
+
+    def _parse_date(self, date_str: str) -> datetime:
+        """날짜 문자열 파싱"""
+        try:
+            # "Reviewed in the United States on January 15, 2024" 형식
+            if "on " in date_str:
+                date_part = date_str.split("on ")[-1]
+                return datetime.strptime(date_part, "%B %d, %Y")
+        except:
+            pass
+        return datetime.now()
+
+    def collect_buldak_reviews(self, max_pages_per_product: int = 3) -> pd.DataFrame:
+        """
+        모든 불닭 제품의 리뷰를 수집합니다.
+
+        Args:
+            max_pages_per_product: 제품당 최대 페이지 수
+
+        Returns:
+            리뷰 데이터프레임
+        """
+        all_reviews = []
+
+        print(f"Collecting reviews for {len(BULDAK_PRODUCTS)} BULDAK products...")
+
+        for product in BULDAK_PRODUCTS:
+            reviews = self.get_product_reviews(
+                asin=product["asin"],
+                max_pages=max_pages_per_product
+            )
+
+            # 한국어 이름 추가
+            for review in reviews:
+                review["product_name_kr"] = product["name_kr"]
+
+            all_reviews.extend(reviews)
+            time.sleep(2)  # Rate limiting between products
+
+        df = pd.DataFrame(all_reviews)
+        if not df.empty:
+            df["review_date"] = pd.to_datetime(df["review_date"])
+
+        self.collected_reviews = df
+        print(f"\nTotal reviews collected: {len(df)}")
+        return df
+
 
 # 샘플 리뷰 템플릿
 REVIEW_TEMPLATES = {
@@ -237,13 +379,43 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Amazon BULDAK Review Collector")
-    parser.add_argument("--start-year", type=int, default=2023, help="Start year")
+    parser.add_argument("--api-key", help="Rainforest API key for real Amazon data")
+    parser.add_argument("--sample", action="store_true", help="Use sample data (no API needed)")
+    parser.add_argument("--start-year", type=int, default=2023, help="Start year for sample data")
+    parser.add_argument("--max-pages", type=int, default=3, help="Max pages per product (API mode)")
     parser.add_argument("--output", default="amazon_buldak_reviews.csv", help="Output file")
 
     args = parser.parse_args()
 
-    # 샘플 데이터 생성
-    reviews_df = generate_sample_reviews(start_year=args.start_year)
+    if args.api_key:
+        # 실제 API 사용
+        print("=" * 60)
+        print("  Amazon BULDAK Review Collector (Rainforest API)")
+        print("=" * 60)
+
+        collector = RainforestAPICollector(api_key=args.api_key)
+        reviews_df = collector.collect_buldak_reviews(max_pages_per_product=args.max_pages)
+
+        if reviews_df.empty:
+            print("No reviews collected. Check your API key.")
+            exit(1)
+
+    elif args.sample:
+        # 샘플 데이터 생성
+        print("=" * 60)
+        print("  Amazon BULDAK Review Collector (Sample Data)")
+        print("=" * 60)
+        reviews_df = generate_sample_reviews(start_year=args.start_year)
+
+    else:
+        print("Please provide --api-key for real data or --sample for demo data")
+        print()
+        print("Usage:")
+        print("  Real data:   python amazon_buldak_collector.py --api-key YOUR_API_KEY")
+        print("  Sample data: python amazon_buldak_collector.py --sample")
+        print()
+        print("Get your free API key at: https://www.rainforestapi.com/")
+        exit(0)
 
     # 저장
     reviews_df.to_csv(args.output, index=False, encoding="utf-8-sig")

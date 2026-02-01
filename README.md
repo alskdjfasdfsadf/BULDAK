@@ -1,120 +1,124 @@
-# Reddit BULDAK Timeline Tracker
+# BULDAK Tracker
 
-Reddit에서 불닭(BULDAK) 관련 언급량을 수집하고 시계열 그래프로 시각화하는 도구입니다.
+불닭(BULDAK) 관련 데이터를 수집하고 시계열 그래프로 시각화하는 도구입니다.
+
+## 지원하는 데이터 소스
+
+| 소스 | 데이터 | API 필요 |
+|------|--------|----------|
+| **Reddit** | 언급량, 업보트, 댓글 | Reddit API (무료) |
+| **Amazon** | 제품 리뷰, 별점 | Rainforest API (무료 100회/월) |
 
 ---
 
-## 어디서 실행할 수 있나요?
+## 빠른 시작 (Colab)
 
-### 방법 1: 내 컴퓨터에서 실행 (권장)
-
-1. **Python 설치 확인**
-   - 터미널/명령 프롬프트를 열고 `python --version` 입력
-   - Python 3.8 이상이 필요합니다
-   - 없다면: https://www.python.org/downloads/ 에서 설치
-
-2. **이 프로젝트 다운로드**
-   ```bash
-   git clone <이 저장소 URL>
-   cd BULDAK
-   ```
-
-3. **필요한 패키지 설치**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **실행!**
-   ```bash
-   python run_quarterly.py
-   ```
-
-### 방법 2: Google Colab에서 실행 (설치 없이)
-
-1. https://colab.research.google.com 접속
-2. 새 노트북 생성
-3. 다음 코드를 복사해서 실행:
-
+### Reddit 분기별 언급량
 ```python
-# 1. 패키지 설치
-!pip install praw pandas matplotlib numpy
-
-# 2. 파일 다운로드 (또는 직접 업로드)
-!git clone <이 저장소 URL>
+!pip install praw pandas matplotlib numpy -q
+!git clone https://github.com/alskdjfasdfsadf/BULDAK.git
 %cd BULDAK
 
-# 3. 실행
-!python run_quarterly.py
+from run_quarterly import main
+main()
 ```
 
-### 방법 3: Jupyter Notebook에서 실행
+### Amazon 리뷰 분석
+```python
+from run_amazon import run_amazon_analysis
+run_amazon_analysis()  # 샘플 데이터
 
-Jupyter가 설치되어 있다면:
-```bash
-pip install jupyter
-jupyter notebook
+# 실제 데이터 (API 키 필요)
+# run_amazon_analysis(api_key="YOUR_RAINFOREST_API_KEY")
 ```
-새 노트북에서 위의 코드를 실행하세요.
 
 ---
 
-## 빠른 시작: 분기별 언급량 그래프 (2023~현재)
+## Amazon 리뷰 분석
 
-가장 간단한 방법:
+### 샘플 데이터로 시작 (API 키 불필요)
+
+```bash
+python run_amazon.py
+```
+
+### 실제 Amazon 데이터 수집
+
+**Rainforest API**를 사용합니다 (무료 100 크레딧/월).
+
+#### API 키 발급 방법:
+1. https://www.rainforestapi.com/ 접속
+2. 무료 계정 생성 (Sign Up)
+3. 대시보드에서 API Key 복사
+
+#### 실행:
+
+```bash
+# 명령어로 실행
+python run_amazon.py --api-key YOUR_API_KEY
+
+# 또는 Colab에서
+from run_amazon import run_amazon_analysis
+run_amazon_analysis(api_key="YOUR_API_KEY")
+```
+
+### 분석 항목
+
+- **분기별 리뷰 수** - 시간에 따른 리뷰 증가 추이
+- **평균 평점 추이** - 분기별 평균 별점 변화
+- **별점 분포** - 1~5점 비율 파이 차트
+- **제품별 비교** - 어떤 불닭이 인기인지
+
+### 포함된 불닭 제품
+
+| 제품 | ASIN |
+|------|------|
+| 불닭볶음면 오리지널 | B01MUGP5FJ |
+| 핵불닭볶음면 (2배) | B01N7Y0D5U |
+| 까르보불닭볶음면 | B07B4MKTL3 |
+| 치즈불닭볶음면 | B07QHN2LX8 |
+| 짜장불닭볶음면 | B08HV7RPRP |
+| 불닭볶음면 라이트 | B09XHQJ5BC |
+
+---
+
+## Reddit 언급량 분석
+
+### 샘플 데이터로 시작 (API 키 불필요)
 
 ```bash
 python run_quarterly.py
 ```
 
-이 명령어 하나로:
-- 2023년 1월 ~ 현재까지의 샘플 데이터 생성
-- 분기별 언급량 막대 그래프 표시
-- `charts/buldak_quarterly.png` 파일로 저장
-
----
-
-## 상세 사용법
-
-### 1. 샘플 데이터로 시작하기 (API 키 불필요)
-
-```bash
-# 분기별 그래프만 보기
-python visualize_timeline.py --generate-sample --quarterly
-
-# 모든 그래프 보기
-python visualize_timeline.py --generate-sample
-```
-
-### 2. 실제 Reddit 데이터 수집
-
-Reddit API 키가 필요합니다.
+### 실제 Reddit 데이터 수집
 
 #### Reddit API 키 발급 방법:
-1. https://www.reddit.com/prefs/apps 접속 (로그인 필요)
-2. 페이지 하단 "create app" 또는 "create another app" 클릭
-3. 이름 입력 (예: buldak_tracker)
-4. "script" 선택
-5. redirect uri에 `http://localhost:8080` 입력
-6. "create app" 클릭
-7. client_id (앱 이름 바로 아래 짧은 문자열)와 secret 확인
+1. https://www.reddit.com/prefs/apps 접속
+2. "create app" → "script" 선택
+3. redirect uri: `http://localhost:8080`
+4. client_id와 secret 확인
 
-#### 데이터 수집:
+#### 실행:
 
 ```bash
 python reddit_buldak_collector.py \
     --client-id YOUR_CLIENT_ID \
-    --client-secret YOUR_CLIENT_SECRET \
-    --output buldak_timeline.csv
+    --client-secret YOUR_CLIENT_SECRET
+
+python visualize_timeline.py --quarterly
 ```
 
-#### 시각화:
+---
+
+## 설치
 
 ```bash
-# 분기별 그래프만
-python visualize_timeline.py --input buldak_timeline.csv --quarterly
+pip install -r requirements.txt
+```
 
-# 모든 그래프
-python visualize_timeline.py --input buldak_timeline.csv
+또는 개별 설치:
+```bash
+pip install praw pandas matplotlib numpy requests
 ```
 
 ---
@@ -123,66 +127,27 @@ python visualize_timeline.py --input buldak_timeline.csv
 
 | 파일 | 설명 |
 |------|------|
-| `buldak_timeline.csv` | 일별 집계된 시계열 데이터 |
-| `charts/buldak_quarterly.png` | **분기별 언급량 막대 그래프** |
-| `charts/buldak_timeline.png` | 일별 시계열 그래프 |
-| `charts/buldak_heatmap.png` | 요일별 히트맵 |
-| `charts/buldak_monthly.png` | 월별 요약 차트 |
-
----
-
-## 검색 키워드
-
-다음 키워드로 Reddit을 검색합니다:
-- `buldak`, `불닭`
-- `fire noodles`, `samyang fire`
-- `hot chicken ramen`
-- `2x spicy`, `carbonara buldak`
-
-## 검색 대상 서브레딧
-
-- r/spicy, r/ramen, r/instantramen
-- r/KoreanFood, r/asianeats
-- r/food, r/FoodPorn
-- r/snackexchange, r/korea
-
----
-
-## 명령어 옵션
-
-```bash
-# 차트 저장만 (화면 표시 안함) - 서버 환경에서 유용
-python visualize_timeline.py --generate-sample --no-show
-
-# 출력 디렉토리 지정
-python visualize_timeline.py --output-dir ./my_charts
-
-# 분기별 그래프만 생성
-python visualize_timeline.py --quarterly
-```
+| `charts/buldak_quarterly.png` | Reddit 분기별 언급량 |
+| `charts/amazon_quarterly.png` | Amazon 분기별 리뷰 수 & 평점 |
+| `charts/amazon_rating_dist.png` | Amazon 별점 분포 |
+| `charts/amazon_products.png` | 제품별 비교 |
 
 ---
 
 ## 문제 해결
 
-### "ModuleNotFoundError" 오류
+### "ModuleNotFoundError"
 ```bash
 pip install -r requirements.txt
 ```
 
-### 그래프가 안 보여요
-- `--no-show` 옵션을 제거하세요
-- 또는 `charts/` 폴더에서 저장된 PNG 파일을 확인하세요
+### Colab에서 그래프가 안 보여요
+`!python` 대신 함수를 직접 import해서 실행하세요:
+```python
+from run_amazon import run_amazon_analysis
+run_amazon_analysis()
+```
 
-### 한글이 깨져요
-- matplotlib 한글 폰트 설정이 필요할 수 있습니다
-- macOS: `pip install koreanize-matplotlib`
-- Windows: 기본 폰트로 표시됩니다
-
----
-
-## 주의사항
-
-- Reddit API는 요청 제한이 있습니다 (분당 100회)
-- 스크립트는 자동으로 rate limiting을 적용합니다
-- 대량의 히스토리 데이터가 필요한 경우 Pushshift API 사용을 고려하세요
+### API 오류
+- API 키가 올바른지 확인
+- 무료 크레딧이 남아있는지 확인 (Rainforest: 100회/월)
