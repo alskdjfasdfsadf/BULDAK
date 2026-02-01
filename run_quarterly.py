@@ -53,7 +53,7 @@ def main():
     print(f"      일평균 언급: {df['mention_count'].mean():.1f}개")
 
     # 분기별 집계 출력
-    quarterly = df.resample('Q')['mention_count'].sum()
+    quarterly = df.resample('QE')['mention_count'].sum()
     print()
     print("      [분기별 언급량]")
     for period, count in quarterly.items():

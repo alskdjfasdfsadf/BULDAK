@@ -11,8 +11,8 @@ from datetime import datetime
 import argparse
 import os
 
-# 한글 폰트 설정
-plt.rcParams['font.family'] = ['DejaVu Sans', 'Malgun Gothic', 'AppleGothic', 'sans-serif']
+# 폰트 설정 (Colab/Linux 호환)
+plt.rcParams['font.family'] = 'DejaVu Sans'
 plt.rcParams['axes.unicode_minus'] = False
 
 
@@ -144,7 +144,7 @@ def plot_monthly_summary(df: pd.DataFrame, save_path: str = None,
         show_plot: 화면에 표시 여부
     """
     # 월별 집계
-    monthly = df.resample('M').agg({
+    monthly = df.resample('ME').agg({
         'mention_count': 'sum',
         'total_score': 'sum',
         'total_comments': 'sum'
@@ -200,7 +200,7 @@ def plot_quarterly_mentions(df: pd.DataFrame, save_path: str = None,
         show_plot: 화면에 표시 여부
     """
     # 분기별 집계
-    quarterly = df.resample('Q').agg({
+    quarterly = df.resample('QE').agg({
         'mention_count': 'sum'
     })
 
